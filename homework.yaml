@@ -1,0 +1,181 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: homework
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydeployment
+  namespace: homework
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: mypod
+          image: yaroslavperf/gb-k8s-lecture-1:1.0
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1024Mi
+            requests:
+              cpu: "0.5"
+              memory: 512Mi
+          env:
+            - name: SOME_VARIABLE
+              value: "hello, world"
+            - name: POSTGRES_HOST
+              value: myservice-db.test.svc.cluster.local:5432
+            - name: POSTGRES_USER
+              value: api
+            - name: POSTGRES_PASSWORD
+              value: api
+            - name: POSTGRES_DB
+              value: db
+          volumeMounts:
+            - name: geekbrains
+              mountPath: "/etc/geekbrains"
+              readOnly: true
+            - name: config
+              mountPath: "/config"
+              readOnly: true
+            - name: data
+              mountPath: "/data"
+      volumes:
+        - name: geekbrains
+          secret:
+            secretName: mysecret
+            items:
+              - key: username
+                path: username
+        - name: config
+          configMap:
+            name: myconfigmap
+            items:
+              - key: config.yaml
+                path: config.yaml
+        - name: data
+          persistentVolumeClaim:
+            claimName: myclaim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+  namespace: homework
+spec:
+  type: NodePort
+  selector:
+    app: myapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myingress
+  namespace: homework
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myservice
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+  namespace: homework
+data:
+  username: Z2Vla2JyYWlucw==
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfigmap
+  namespace: homework
+data:
+  some-number: "3"
+  config.yaml: |
+    app:
+      test: false
+      done: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+  namespace: homework
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: standard
+---
+
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydeployment-db
+  namespace: homework
+spec:
+  selector:
+    matchLabels:
+      app: mydb
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mydb
+    spec:
+      containers:
+        - name: mypod
+          image: postgres
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1024Mi
+            requests:
+              cpu: "0.5"
+              memory: 512Mi
+          env:
+            - name: POSTGRES_USER
+              value: api
+            - name: POSTGRES_PASSWORD
+              value: api
+            - name: POSTGRES_DB
+              value: db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice-db
+  namespace: homework
+spec:
+  type: ClusterIP
+  selector:
+    app: mydb
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
