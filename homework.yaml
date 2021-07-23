@@ -18,6 +18,16 @@ spec:
       labels:
         app: myapp
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - myapp
+              topologyKey: "kubernetes.io/hostname"
       containers:
         - name: mypod
           image: yaroslavperf/gb-k8s-lecture-1:1.0
@@ -39,6 +49,16 @@ spec:
               value: api
             - name: POSTGRES_DB
               value: db
+          livenessProbe:
+            httpGet:
+              path: /api
+              port: 80
+              httpHeaders:
+                - name: Authorization
+                  value: abc123
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 7
           volumeMounts:
             - name: geekbrains
               mountPath: "/etc/geekbrains"
