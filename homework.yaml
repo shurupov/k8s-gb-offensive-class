@@ -43,12 +43,16 @@ spec:
               value: "hello, world"
             - name: POSTGRES_HOST
               value: myservice-db.test.svc.cluster.local:5432
-            - name: POSTGRES_USER
-              value: api
-            - name: POSTGRES_PASSWORD
-              value: api
-            - name: POSTGRES_DB
+            - name: POSTGRE_USER
+              value: user
+            - name: POSTGRE_PASSWORD
+              value: password
+            - name: POSTGRE_DB
               value: db
+            - name: REDIS_PASSWORD
+              value: abc123
+            - name: REDIS_HOST
+              value: 127.0.0.1:6379
           livenessProbe:
             httpGet:
               path: /api
@@ -213,10 +217,6 @@ spec:
       storage: 100Mi
   storageClassName: standard
 ---
-
-
-
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -259,6 +259,53 @@ spec:
   type: ClusterIP
   selector:
     app: mydb
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydeployment-redis
+  namespace: homework
+spec:
+  selector:
+    matchLabels:
+      app: myredis
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: myredis
+    spec:
+      containers:
+        - name: myredis
+          image: redis
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1024Mi
+            requests:
+              cpu: "0.5"
+              memory: 512Mi
+          env:
+            - name: RABBIT_USER
+              value: guest
+            - name: RABBIT_PASSWORD
+              value: guest
+            - name: REDIS_HOST
+              value: 127.0.0.1:6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice-db
+  namespace: homework
+spec:
+  type: ClusterIP
+  selector:
+    app: myredis
   ports:
     - protocol: TCP
       port: 5432
